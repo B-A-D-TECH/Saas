@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.sql": "postgresql"
+  },
+  "mssql.ls.autoStart": false,
+  "sqltools.languageServerMode": "off"
+}
