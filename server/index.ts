@@ -9,6 +9,13 @@ import { seedMenuForFirstTenant } from "./pgSeed.ts";
 const PORT = Number(process.env.PORT ?? 4000);
 const app = express();
 
+app.get("/", (_req, res) => {
+  res.json({
+    message: "SaaS POS API Online",
+    status: "OK"
+  });
+});
+
 app.use(
   cors({
     origin: true,
