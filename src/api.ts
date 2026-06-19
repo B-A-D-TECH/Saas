@@ -1,5 +1,5 @@
 import type { CategoryId, MenuItem, Order, OrderStatus, ServiceMode } from "./types";
-
+const API_URL = import.meta.env.VITE_API_URL;
 export interface MenuPayload {
   items: MenuItem[];
   categoryLabels: Record<CategoryId, string>;
@@ -178,7 +178,7 @@ function createRequestHeaders(): HeadersInit {
 }
 
 export async function fetchTenants(): Promise<Tenant[]> {
-  const res = await fetch("/api/tenants", { headers: { "Content-Type": "application/json" } });
+  const res = await fetch(`${API_URL}/api/tenants`, { headers: { "Content-Type": "application/json" } });
   if (!res.ok) throw new Error("Impossible de charger les restaurants");
   const data = await parseJson<{ tenants?: Tenant[] }>(res);
   if (!Array.isArray(data.tenants)) throw new Error("Format restaurants invalide");
@@ -192,7 +192,7 @@ export async function registerUser(payload: {
   firstName: string;
   lastName: string;
 }): Promise<{ token: string; user: { id: string; tenantId: string; tenantName: string; email: string; role: string; firstName: string; lastName: string } }> {
-  const res = await fetch("/api/auth/register", {
+  const res = await fetch(`${API_URL}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -204,7 +204,7 @@ export async function registerUser(payload: {
 }
 
 export async function loginUser(payload: { email: string; password: string }): Promise<{ token: string; user: { id: string; tenantId: string; tenantName: string; email: string; role: string; firstName: string; lastName: string } }> {
-  const res = await fetch("/api/auth/login", {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -216,7 +216,7 @@ export async function loginUser(payload: { email: string; password: string }): P
 }
 
 export async function fetchMenu(): Promise<MenuPayload> {
-  const res = await fetch("/api/menu", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/menu`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger la carte");
   const data = await parseJson<{ items?: MenuItem[]; categoryLabels?: Record<CategoryId, string> }>(res);
   if (!data.items || typeof data.categoryLabels !== "object") {
@@ -226,7 +226,7 @@ export async function fetchMenu(): Promise<MenuPayload> {
 }
 
 export async function fetchOrders(): Promise<Order[]> {
-  const res = await fetch("/api/orders", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/orders`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les commandes");
   const data = await parseJson<{ orders?: Order[] }>(res);
   if (!Array.isArray(data.orders)) throw new Error("Format commandes invalide");
@@ -234,7 +234,7 @@ export async function fetchOrders(): Promise<Order[]> {
 }
 
 export async function fetchTables(): Promise<TableRecord[]> {
-  const res = await fetch("/api/tables", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/tables`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les tables");
   const data = await parseJson<{ tables?: TableRecord[] }>(res);
   if (!Array.isArray(data.tables)) throw new Error("Format tables invalide");
@@ -242,28 +242,28 @@ export async function fetchTables(): Promise<TableRecord[]> {
 }
 
 export async function fetchAnalytics(): Promise<AnalyticsPayload> {
-  const res = await fetch("/api/analytics", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/analytics`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les statistiques");
   const data = await parseJson<AnalyticsPayload>(res);
   return data;
 }
 
 export async function fetchInventory(): Promise<InventoryItem[]> {
-  const res = await fetch("/api/inventory", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/inventory`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger l’inventaire");
   const data = await parseJson<{ inventory?: InventoryItem[] }>(res);
   return Array.isArray(data.inventory) ? data.inventory : [];
 }
 
 export async function fetchSuppliers(): Promise<SupplierRecord[]> {
-  const res = await fetch("/api/suppliers", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/suppliers`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les fournisseurs");
   const data = await parseJson<{ suppliers?: SupplierRecord[] }>(res);
   return Array.isArray(data.suppliers) ? data.suppliers : [];
 }
 
 export async function createSupplier(payload: { name: string; contact?: string; phone?: string; email?: string; address?: string }): Promise<{ id: string }> {
-  const res = await fetch("/api/suppliers", {
+  const res = await fetch(`${API_URL}/api/suppliers`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -273,14 +273,14 @@ export async function createSupplier(payload: { name: string; contact?: string; 
 }
 
 export async function fetchPurchases(): Promise<PurchaseRecord[]> {
-  const res = await fetch("/api/purchases", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/purchases`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les achats");
   const data = await parseJson<{ purchases?: PurchaseRecord[] }>(res);
   return Array.isArray(data.purchases) ? data.purchases : [];
 }
 
 export async function createPurchase(payload: { supplierId?: string; productId: string; quantity: number; unitCost: number; notes?: string; purchasedAt?: string }): Promise<{ id: string }> {
-  const res = await fetch("/api/purchases", {
+  const res = await fetch(`${API_URL}/api/purchases`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -299,7 +299,7 @@ export async function createInventory(payload: {
   alertThreshold?: number;
   active?: boolean;
 }): Promise<{ id: string }> {
-  const res = await fetch("/api/inventory", {
+  const res = await fetch(`${API_URL}/api/inventory`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify({
@@ -318,14 +318,14 @@ export async function createInventory(payload: {
 }
 
 export async function fetchStockMovements(): Promise<StockMovementRecord[]> {
-  const res = await fetch("/api/stock-movements", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/stock-movements`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger l’historique des mouvements");
   const data = await parseJson<{ movements?: StockMovementRecord[] }>(res);
   return Array.isArray(data.movements) ? data.movements : [];
 }
 
 export async function fetchClosures(): Promise<CashClosure[]> {
-  const res = await fetch("/api/closures", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/closures`, { headers: createRequestHeaders() });
   if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les clôtures");
   const data = await parseJson<{ closures?: CashClosure[] }>(res);
   if (!Array.isArray(data.closures)) throw new Error("Format clôtures invalide");
@@ -339,7 +339,7 @@ export async function createClosure(payload: {
   paymentBreakdown: Record<string, number>;
   report: Record<string, unknown>;
 }): Promise<CashClosure> {
-  const res = await fetch("/api/closures", {
+  const res = await fetch(`${API_URL}/api/closures`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -354,7 +354,7 @@ export async function createOrder(payload: {
   tableLabel: string;
   lines: { itemId: string; name: string; unitPrice: number; qty: number; note: string }[];
 }): Promise<Order> {
-  const res = await fetch("/api/orders", {
+  const res = await fetch(`${API_URL}/api/orders`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -366,7 +366,7 @@ export async function createOrder(payload: {
 }
 
 export async function patchOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
-  const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
+  const res = await fetch(`${API_URL}/api/orders/${encodeURIComponent(orderId)}/status`, {
     method: "PATCH",
     headers: createRequestHeaders(),
     body: JSON.stringify({ status }),
@@ -378,7 +378,7 @@ export async function patchOrderStatus(orderId: string, status: OrderStatus): Pr
 }
 
 export async function validateQrToken(token: string): Promise<{ restaurantId: string; tableId: string | null; tableName: string | null }> {
-  const res = await fetch(`/api/qr/validate?token=${encodeURIComponent(token)}`, {
+  const res = await fetch(`${API_URL}/api/qr/validate?token=${encodeURIComponent(token)}`, {
     headers: { "Content-Type": "application/json" },
   });
   const data = await parseJson<{ restaurantId?: string; tableId?: string | null; tableName?: string | null; error?: string }>(res);
