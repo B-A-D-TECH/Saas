@@ -387,3 +387,4 @@ export async function validateQrToken(token: string): Promise<{ restaurantId: st
   return { restaurantId: data.restaurantId, tableId: data.tableId ?? null, tableName: data.tableName ?? null };
 }
 console.log("API_URL =", API_URL);
+console.log("ENV TEST:", import.meta.env.VITE_API_URL);
