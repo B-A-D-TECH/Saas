@@ -386,3 +386,4 @@ export async function validateQrToken(token: string): Promise<{ restaurantId: st
   if (!data.restaurantId) throw new Error("Réponse serveur invalide");
   return { restaurantId: data.restaurantId, tableId: data.tableId ?? null, tableName: data.tableName ?? null };
 }
+console.log("API_URL =", API_URL);
