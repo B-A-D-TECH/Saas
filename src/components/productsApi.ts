@@ -1,5 +1,5 @@
 import type { ProductCategoryDto, ProductDto, ProductStatus } from "./productsTypes";
-
+const API_URL = import.meta.env.VITE_API_URL;
 async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
   return JSON.parse(text) as T;
@@ -33,21 +33,21 @@ function createRequestHeaders(): HeadersInit {
 }
 
 export async function fetchProductCategories(): Promise<ProductCategoryDto[]> {
-  const res = await fetch("/api/product-categories", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/product-categories`, { headers: createRequestHeaders() });
   if (!res.ok) throw new Error("Impossible de charger les catégories");
   const data = await parseJson<{ categories?: ProductCategoryDto[] }>(res);
   return data.categories ?? [];
 }
 
 export async function fetchProducts(): Promise<ProductDto[]> {
-  const res = await fetch("/api/products", { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/products`, { headers: createRequestHeaders() });
   if (!res.ok) throw new Error("Impossible de charger les produits");
   const data = await parseJson<{ products?: ProductDto[] }>(res);
   return data.products ?? [];
 }
 
 export async function fetchProduct(id: string): Promise<ProductDto> {
-  const res = await fetch(`/api/products/${encodeURIComponent(id)}`, { headers: createRequestHeaders() });
+  const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, { headers: createRequestHeaders() });
   if (!res.ok) throw new Error("Produit introuvable");
   const data = await parseJson<{ product?: ProductDto }>(res);
   if (!data.product) throw new Error("Produit introuvable");
@@ -63,7 +63,7 @@ export async function createProduct(payload: {
   photoUrl: string | null;
   available: boolean;
 }): Promise<{ id: string }> {
-  const res = await fetch("/api/products", {
+  const res = await fetch(`${API_URL}/api/products`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -81,7 +81,7 @@ export async function updateProduct(id: string, payload: {
   photoUrl: string | null;
   available: boolean;
 }): Promise<{ ok: true }> {
-  const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -91,7 +91,7 @@ export async function updateProduct(id: string, payload: {
 }
 
 export async function deleteProduct(id: string): Promise<{ ok: true }> {
-  const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: createRequestHeaders(),
   });
@@ -100,7 +100,7 @@ export async function deleteProduct(id: string): Promise<{ ok: true }> {
 }
 
 export async function createProductCategory(payload: { name: string; slug: string; position: number }): Promise<{ id: string }> {
-  const res = await fetch("/api/product-categories", {
+  const res = await fetch(`${API_URL}/api/product-categories`, {
     method: "POST",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -110,7 +110,7 @@ export async function createProductCategory(payload: { name: string; slug: strin
 }
 
 export async function updateProductCategory(id: string, payload: { name: string; slug: string; position: number }): Promise<{ ok: true }> {
-  const res = await fetch(`/api/product-categories/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${API_URL}/api/product-categories/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: createRequestHeaders(),
     body: JSON.stringify(payload),
@@ -120,7 +120,7 @@ export async function updateProductCategory(id: string, payload: { name: string;
 }
 
 export async function deleteProductCategory(id: string): Promise<{ ok: true }> {
-  const res = await fetch(`/api/product-categories/${encodeURIComponent(id)}`, {
+  const res = await fetch(`${API_URL}/api/product-categories/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: createRequestHeaders(),
   });
