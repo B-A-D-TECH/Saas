@@ -344,12 +344,11 @@ router.get("/menu", async (req, res) => {
     price: Number(item.price),
     available: item.available,
     photoUrl: item.photo_url ?? undefined,
-    category: (['entrees', 'plats', 'desserts', 'boissons'] as string[]).includes(item.category ?? "") ? (item.category as any) : (null as any),
+    // Use the category slug from DB directly (must match categories.slug)
+    category: item.category,
   })).filter((i) => i.category);
 
-
-
-  // Labels dynamiques depuis la table `categories`
+  // Labels dynamiques depuis la table `categories` (slug -> name)
   const catRows = await query<{ slug: string; name: string }>(
     `SELECT slug, name FROM categories WHERE tenant_id = $1 ORDER BY position ASC`,
     [tenantId],
@@ -358,14 +357,6 @@ router.get("/menu", async (req, res) => {
   const categoryLabels = Object.fromEntries(
     catRows.rows.map((c) => [c.slug, c.name]),
   ) as Record<string, string>;
-
-  // Fallback: si aucune catégorie en base, on renvoie les 4 catégories par défaut
-  if (Object.keys(categoryLabels).length === 0) {
-    categoryLabels.entrees = "Entrées";
-    categoryLabels.plats = "Plats";
-    categoryLabels.desserts = "Desserts";
-    categoryLabels.boissons = "Boissons";
-  }
 
   return jsonResponse(res, {
     items,
