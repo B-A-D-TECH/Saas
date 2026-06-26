@@ -1,8 +1,7 @@
-# TODO (blackboxai)
+# TODO
 
-- [ ] Step 1: Fix PostgreSQL TypeScript issue (pg types) by adding @types/pg if required and updating server/pg.ts.
-- [ ] Step 2: Run `npm run build` and ensure there are no pg-related TS errors.
-- [ ] Step 3: Audit SQLite usage across the project (node:sqlite / sqlite / DatabaseSync / initDb / db.ts) and list all dependent files.
-- [ ] Step 4: After PostgreSQL startup is verified, remove SQLite dependencies only if no references remain.
-- [ ] Step 5: Run final `npm run build` and report remaining TS errors.
+- [ ] Fix backend: suppression d’une catégorie (`DELETE /api/product-categories/:id`) doit aussi retirer/neutraliser les `menu_items` liés (option choisie: B).
+- [ ] Mettre à jour l’API `/api/menu` pour ne plus mapper `NULL category_id` vers `plats` (éviter fallback qui fait “réapparaître” les produits).
+- [ ] Mettre à jour le frontend POS si nécessaire pour gérer la catégorie “non catégorisée” (ou ignorer les items sans catégorie).
+- [ ] Tester manuellement: créer 2 catégories, assigner des items, supprimer une catégorie et vérifier que la caisse ne l’affiche plus.
 

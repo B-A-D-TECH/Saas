@@ -49,6 +49,11 @@ export default function Navbar() {
               Produits
             </NavLink>
           </li>
+            <li>
+            <NavLink to="/categories" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+             Catégories
+            </NavLink>
+          </li>
         </ul>
       </div>
       <div className="nav-right">

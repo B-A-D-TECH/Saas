@@ -4,7 +4,17 @@ import { MENU_ITEMS } from "./menuSeed.ts";
 // This file seeds the PostgreSQL schema with initial categories and menu items.
 // It is intentionally tenant-agnostic: it uses the first tenant it finds and
 // assigns all seeded menu data to it.
+export async function seedMenuForFirstTenant(): Promise<void> {
+  const tenantRes = await query<{ id: string }>(
+    `SELECT id FROM tenants ORDER BY created_at DESC LIMIT 1`,
+  );
 
+  const tenantId = tenantRes.rows[0]?.id;
+
+  if (!tenantId) return;
+
+  await seedMenuForTenant(tenantId);
+}
 const CATEGORY_SLUGS = {
   entrees: "entrees",
   plats: "plats",
@@ -19,14 +29,9 @@ function normalizeCategorySlug(s: string): CategorySlug {
   return "plats";
 }
 
-export async function seedMenuForFirstTenant(): Promise<void> {
-  // 1) Find a tenant.
-  const tenantRes = await query<{ id: string }>(
-    `SELECT id FROM tenants ORDER BY created_at DESC LIMIT 1`,
-  );
-
-  const tenantId = tenantRes.rows[0]?.id;
-  if (!tenantId) return;
+export async function seedMenuForTenant(
+  tenantId: string,
+): Promise<void> {
 
   // 2) Ensure categories exist.
   const categoryInserts = Object.entries(CATEGORY_SLUGS).map(([name, slug], idx) => {
@@ -40,6 +45,7 @@ export async function seedMenuForFirstTenant(): Promise<void> {
   });
 
   await Promise.all(categoryInserts);
+
 
   // 3) Insert menu items with the correct category_id.
   // We use the menu item name as a stable unique key for the tenant.

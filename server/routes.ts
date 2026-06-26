@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "./pg.ts";
 import { createJwt, hashPassword, verifyJwt, verifyPassword, createToken } from "./auth.ts";
 import type { Request, Response, NextFunction } from "express";
+import { seedMenuForTenant } from "./pgSeed.ts";
 
 const router = express.Router();
 
@@ -117,11 +118,12 @@ async function consumeOrderStock(tenantId: string, orderId: string, lines: Array
       [nextStock, productResult.rows[0].id, tenantId],
     );
 
-    await query(
-      `INSERT INTO stock_movements (tenant_id, product_id, type, quantity, quantity_before, quantity_after, reference_type, reference_id, notes)
+await query(
+    `INSERT INTO stock_movements (tenant_id, product_id, type, quantity, quantity_before, quantity_after, reference_type, reference_id, notes)
        VALUES ($1, $2, 'OUT', $3, $4, $5, 'ORDER', $6, $7)`,
-      [tenantId, productResult.rows[0].id, line.qty, currentStock, nextStock, orderId, `Commande ${line.name}`],
-    );
+    [tenantId, productResult.rows[0].id, line.qty, currentStock, nextStock, orderId, `Commande ${line.name}`],
+  );
+
   }
 }
 
@@ -196,6 +198,7 @@ router.post("/auth/register", async (req, res) => {
   );
 
   const tenantId = createdTenant.rows[0].id;
+  await seedMenuForTenant(tenantId);
   const passwordHash = await hashPassword(password);
   const createdUser = await query<{ id: string }>(
     "INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
@@ -324,13 +327,15 @@ router.get("/menu", async (req, res) => {
     photo_url: string | null;
     category: string | null;
   }>(
-    `SELECT mi.id, mi.name, mi.description, mi.price, mi.available, mi.photo_url, COALESCE(c.slug, 'plats') AS category
+     `SELECT mi.id, mi.name, mi.description, mi.price, mi.available, mi.photo_url,
+              c.slug AS category
      FROM menu_items mi
      LEFT JOIN categories c ON mi.category_id = c.id
-     WHERE mi.tenant_id = $1
+     WHERE mi.tenant_id = $1 AND mi.available = TRUE
      ORDER BY c.position NULLS LAST, mi.name`,
     [tenantId],
   );
+
 
   const items = rows.rows.map((item) => ({
     id: item.id,
@@ -339,17 +344,32 @@ router.get("/menu", async (req, res) => {
     price: Number(item.price),
     available: item.available,
     photoUrl: item.photo_url ?? undefined,
-    category: (['entrees', 'plats', 'desserts', 'boissons'] as string[]).includes(item.category ?? "") ? item.category : "plats",
-  }));
+    category: (['entrees', 'plats', 'desserts', 'boissons'] as string[]).includes(item.category ?? "") ? (item.category as any) : (null as any),
+  })).filter((i) => i.category);
+
+
+
+  // Labels dynamiques depuis la table `categories`
+  const catRows = await query<{ slug: string; name: string }>(
+    `SELECT slug, name FROM categories WHERE tenant_id = $1 ORDER BY position ASC`,
+    [tenantId],
+  );
+
+  const categoryLabels = Object.fromEntries(
+    catRows.rows.map((c) => [c.slug, c.name]),
+  ) as Record<string, string>;
+
+  // Fallback: si aucune catégorie en base, on renvoie les 4 catégories par défaut
+  if (Object.keys(categoryLabels).length === 0) {
+    categoryLabels.entrees = "Entrées";
+    categoryLabels.plats = "Plats";
+    categoryLabels.desserts = "Desserts";
+    categoryLabels.boissons = "Boissons";
+  }
 
   return jsonResponse(res, {
     items,
-    categoryLabels: {
-      entrees: "Entrées",
-      plats: "Plats",
-      desserts: "Desserts",
-      boissons: "Boissons",
-    },
+    categoryLabels,
   });
 });
 
@@ -1036,9 +1056,18 @@ router.put("/product-categories/:id", authorize, requireRole("Super Admin", "Adm
 router.delete("/product-categories/:id", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
   const user = req.user as AuthPayload;
   const { id } = req.params;
+
+  // Option B: garder les menu items, mais les retirer de la catégorie supprimée.
+  // (menu_items.category_id est FK avec ON DELETE SET NULL, mais on neutralise explicitement pour éviter tout écart.)
+  await query(
+    "UPDATE menu_items SET category_id = NULL, updated_at = NOW() WHERE category_id = $1 AND tenant_id = $2",
+    [id, user.tenantId],
+  );
+
   await query(`DELETE FROM categories WHERE id = $1 AND tenant_id = $2`, [id, user.tenantId]);
   return jsonResponse(res, { ok: true });
 });
+
 
 router.get("/subscription", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
