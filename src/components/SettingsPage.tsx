@@ -2,18 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
 import {
   fetchSettingsAppearance,
+  fetchSettingsBilling,
   fetchSettingsGeneral,
   fetchSettingsLanguageRegion,
+  fetchSettingsNotifications,
   fetchTenantUsers,
   updateSettingsAppearance,
+  updateSettingsBilling,
   updateSettingsGeneral,
   updateSettingsLanguageRegion,
+  updateSettingsNotifications,
   updateTenantUserActive,
   updateTenantUserRole,
 } from "../api";
 
 
-type SectionKey = "general" | "language" | "appearance" | "users";
+type SectionKey = "general" | "language" | "appearance" | "notifications" | "billing" | "users";
 
 type SettingsGeneral = {
   companyName?: string;
@@ -38,6 +42,21 @@ type SettingsAppearance = {
   logoUrl?: string;
 };
 
+type SettingsNotifications = {
+  emailAlerts?: boolean;
+  smsAlerts?: boolean;
+  lowStockAlerts?: boolean;
+  orderReadyAlerts?: boolean;
+};
+
+type SettingsBilling = {
+  quoteEnabled?: boolean;
+  quotePrefix?: string;
+  invoicePrefix?: string;
+  taxRate?: number;
+  paymentTerms?: string;
+  footer?: string;
+};
 
 type TenantUserRow = {
   id: string;
@@ -68,6 +87,8 @@ export default function SettingsPage() {
   const [general, setGeneral] = useState<SettingsGeneral>({});
   const [languageRegion, setLanguageRegion] = useState<SettingsLanguageRegion>({});
   const [appearance, setAppearance] = useState<SettingsAppearance>({});
+  const [notifications, setNotifications] = useState<SettingsNotifications>({});
+  const [billing, setBilling] = useState<SettingsBilling>({});
 
   const [users, setUsers] = useState<TenantUserRow[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -108,15 +129,19 @@ export default function SettingsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [g, l, a] = await Promise.all([
+        const [g, l, a, n, b] = await Promise.all([
           fetchSettingsGeneral(),
           fetchSettingsLanguageRegion(),
           fetchSettingsAppearance(),
+          fetchSettingsNotifications(),
+          fetchSettingsBilling(),
         ]);
         if (cancelled) return;
         setGeneral(g);
         setLanguageRegion(l);
         setAppearance(a);
+        setNotifications(n);
+        setBilling(b);
         syncSessionRestaurantName(g.companyName);
       } catch (e) {
         if (!cancelled) {
@@ -159,6 +184,8 @@ export default function SettingsPage() {
     { key: "general", label: "General" },
     { key: "language", label: "Language & Region" },
     { key: "appearance", label: "Appearance" },
+    { key: "notifications", label: "Notifications" },
+    { key: "billing", label: "Billing & Quotes" },
     { key: "users", label: "Users", hide: !canManageUsers(role) },
   ];
 
@@ -195,6 +222,32 @@ export default function SettingsPage() {
     try {
       const next = await updateSettingsAppearance(appearance);
       setAppearance(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'enregistrer les paramètres");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveNotifications() {
+    setSaving(true);
+    setError(null);
+    try {
+      const next = await updateSettingsNotifications(notifications);
+      setNotifications(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible d'enregistrer les paramètres");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveBilling() {
+    setSaving(true);
+    setError(null);
+    try {
+      const next = await updateSettingsBilling(billing);
+      setBilling(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Impossible d'enregistrer les paramètres");
     } finally {
@@ -478,6 +531,133 @@ export default function SettingsPage() {
                     onClick={saveAppearance}
                     disabled={saving}
                   >
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {!loading && activeSection === "notifications" ? (
+              <div className="bg-surface-900 border border-white/10 rounded p-5">
+                <div className="text-lg font-semibold mb-4">Notifications</div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={notifications.emailAlerts ?? false}
+                      onChange={(e) => setNotifications((n) => ({ ...n, emailAlerts: e.target.checked }))}
+                      disabled={saving}
+                    />
+                    <span>Email alerts</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={notifications.smsAlerts ?? false}
+                      onChange={(e) => setNotifications((n) => ({ ...n, smsAlerts: e.target.checked }))}
+                      disabled={saving}
+                    />
+                    <span>SMS alerts</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={notifications.lowStockAlerts ?? false}
+                      onChange={(e) => setNotifications((n) => ({ ...n, lowStockAlerts: e.target.checked }))}
+                      disabled={saving}
+                    />
+                    <span>Low stock alerts</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={notifications.orderReadyAlerts ?? false}
+                      onChange={(e) => setNotifications((n) => ({ ...n, orderReadyAlerts: e.target.checked }))}
+                      disabled={saving}
+                    />
+                    <span>Order ready alerts</span>
+                  </label>
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <button type="button" className="btn-primary" onClick={saveNotifications} disabled={saving}>
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {!loading && activeSection === "billing" ? (
+              <div className="bg-surface-900 border border-white/10 rounded p-5">
+                <div className="text-lg font-semibold mb-4">Billing & Quotes</div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-2 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={billing.quoteEnabled ?? false}
+                      onChange={(e) => setBilling((b) => ({ ...b, quoteEnabled: e.target.checked }))}
+                      disabled={saving}
+                    />
+                    <span>Enable quotes</span>
+                  </label>
+
+                  <label className="block">
+                    <div className="text-sm mb-1">Quote prefix</div>
+                    <input
+                      className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                      value={billing.quotePrefix ?? ""}
+                      onChange={(e) => setBilling((b) => ({ ...b, quotePrefix: e.target.value }))}
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <div className="text-sm mb-1">Invoice prefix</div>
+                    <input
+                      className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                      value={billing.invoicePrefix ?? ""}
+                      onChange={(e) => setBilling((b) => ({ ...b, invoicePrefix: e.target.value }))}
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <div className="text-sm mb-1">Tax rate (%)</div>
+                    <input
+                      type="number"
+                      className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                      value={billing.taxRate ?? 0}
+                      onChange={(e) => setBilling((b) => ({ ...b, taxRate: Number(e.target.value) }))}
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <div className="text-sm mb-1">Payment terms</div>
+                    <input
+                      className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                      value={billing.paymentTerms ?? ""}
+                      onChange={(e) => setBilling((b) => ({ ...b, paymentTerms: e.target.value }))}
+                      disabled={saving}
+                    />
+                  </label>
+
+                  <label className="block md:col-span-2">
+                    <div className="text-sm mb-1">Footer</div>
+                    <textarea
+                      className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                      value={billing.footer ?? ""}
+                      onChange={(e) => setBilling((b) => ({ ...b, footer: e.target.value }))}
+                      disabled={saving}
+                      rows={3}
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <button type="button" className="btn-primary" onClick={saveBilling} disabled={saving}>
                     {saving ? "Saving..." : "Save"}
                   </button>
                 </div>

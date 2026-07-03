@@ -410,6 +410,22 @@ export interface SettingsAppearancePayload {
   logoUrl?: string;
 }
 
+export interface SettingsNotificationsPayload {
+  emailAlerts?: boolean;
+  smsAlerts?: boolean;
+  lowStockAlerts?: boolean;
+  orderReadyAlerts?: boolean;
+}
+
+export interface SettingsBillingPayload {
+  quoteEnabled?: boolean;
+  quotePrefix?: string;
+  invoicePrefix?: string;
+  taxRate?: number;
+  paymentTerms?: string;
+  footer?: string;
+}
+
 export interface TenantUserRow {
   id: string;
   email: string;
@@ -472,6 +488,42 @@ export async function updateSettingsAppearance(payload: SettingsAppearancePayloa
   if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
   const data = await parseJson<{ appearance?: SettingsAppearancePayload }>(res);
   return data.appearance ?? {};
+}
+
+export async function fetchSettingsNotifications(): Promise<SettingsNotificationsPayload> {
+  const res = await fetch(`${API_URL}/api/settings/notifications`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les paramètres");
+  const data = await parseJson<{ notifications?: SettingsNotificationsPayload }>(res);
+  return data.notifications ?? {};
+}
+
+export async function updateSettingsNotifications(payload: SettingsNotificationsPayload): Promise<SettingsNotificationsPayload> {
+  const res = await fetch(`${API_URL}/api/settings/notifications`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
+  const data = await parseJson<{ notifications?: SettingsNotificationsPayload }>(res);
+  return data.notifications ?? {};
+}
+
+export async function fetchSettingsBilling(): Promise<SettingsBillingPayload> {
+  const res = await fetch(`${API_URL}/api/settings/billing`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les paramètres");
+  const data = await parseJson<{ billing?: SettingsBillingPayload }>(res);
+  return data.billing ?? {};
+}
+
+export async function updateSettingsBilling(payload: SettingsBillingPayload): Promise<SettingsBillingPayload> {
+  const res = await fetch(`${API_URL}/api/settings/billing`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
+  const data = await parseJson<{ billing?: SettingsBillingPayload }>(res);
+  return data.billing ?? {};
 }
 
 export async function fetchTenantUsers(): Promise<TenantUserRow[]> {
