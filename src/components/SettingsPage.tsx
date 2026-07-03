@@ -286,6 +286,24 @@ export default function SettingsPage() {
     return ["Super Admin", "Admin", "Manager", "Serveur", "Cuisine", "Caissier"];
   }, []);
 
+  const billingPreview = useMemo(() => {
+    const companyName = general.companyName?.trim() || "Votre entreprise";
+    const quotePrefix = billing.quotePrefix?.trim() || "DEV";
+    const invoicePrefix = billing.invoicePrefix?.trim() || "FAC";
+    const currency = languageRegion.currency?.trim() || "MAD";
+    const taxRate = Number(billing.taxRate ?? 0);
+    return {
+      companyName,
+      quoteReference: `${quotePrefix}-0001`,
+      invoiceReference: `${invoicePrefix}-0001`,
+      paymentTerms: billing.paymentTerms?.trim() || "Paiement à la livraison",
+      footer: billing.footer?.trim() || "Merci pour votre confiance.",
+      taxRate: `${taxRate.toFixed(0)}%`,
+      amount: `1 250 ${currency}`,
+      enabled: billing.quoteEnabled ?? true,
+    };
+  }, [billing, general.companyName, languageRegion.currency]);
+
   return (
     <div className="p-6">
       <div className="max-w-6xl mx-auto">
@@ -660,6 +678,43 @@ export default function SettingsPage() {
                   <button type="button" className="btn-primary" onClick={saveBilling} disabled={saving}>
                     {saving ? "Saving..." : "Save"}
                   </button>
+                </div>
+
+                <div className="mt-6 rounded border border-white/10 bg-surface-800/70 p-4">
+                  <div className="text-sm font-semibold mb-3">Preview</div>
+                  <div className="space-y-2 text-sm text-white/80">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Statut</span>
+                      <span>{billingPreview.enabled ? "Quotes enabled" : "Quotes disabled"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Entreprise</span>
+                      <span>{billingPreview.companyName}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Référence devis</span>
+                      <span>{billingPreview.quoteReference}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Référence facture</span>
+                      <span>{billingPreview.invoiceReference}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Taxe</span>
+                      <span>{billingPreview.taxRate}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Montant</span>
+                      <span>{billingPreview.amount}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Conditions</span>
+                      <span>{billingPreview.paymentTerms}</span>
+                    </div>
+                    <div className="pt-2 border-t border-white/10 text-white/60">
+                      {billingPreview.footer}
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}
