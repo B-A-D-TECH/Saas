@@ -214,8 +214,21 @@ const DEFAULT_APPEARANCE = {
   logoUrl: "",
 };
 
-const DEFAULT_NOTIFICATIONS = {};
-const DEFAULT_BILLING = {};
+const DEFAULT_NOTIFICATIONS = {
+  emailAlerts: true,
+  smsAlerts: false,
+  lowStockAlerts: true,
+  orderReadyAlerts: true,
+};
+
+const DEFAULT_BILLING = {
+  quoteEnabled: true,
+  quotePrefix: "DEV",
+  invoicePrefix: "FAC",
+  taxRate: 0,
+  paymentTerms: "Paiement à la livraison",
+  footer: "",
+};
 
 type RoleNameAllowed = (typeof roleNamesAllowed)[number];
 
@@ -267,6 +280,22 @@ const appearanceSchema = z.object({
   theme: z.string().min(3).optional().default("light"),
   primaryColor: z.string().optional().default("#2563eb"),
   logoUrl: z.string().url().optional().or(z.literal("")),
+});
+
+const notificationsSettingsSchema = z.object({
+  emailAlerts: z.boolean().default(true),
+  smsAlerts: z.boolean().default(false),
+  lowStockAlerts: z.boolean().default(true),
+  orderReadyAlerts: z.boolean().default(true),
+});
+
+const billingSettingsSchema = z.object({
+  quoteEnabled: z.boolean().default(true),
+  quotePrefix: z.string().min(1).optional().default("DEV"),
+  invoicePrefix: z.string().min(1).optional().default("FAC"),
+  taxRate: z.number().min(0).max(100).optional().default(0),
+  paymentTerms: z.string().optional().default("Paiement à la livraison"),
+  footer: z.string().optional().default(""),
 });
 
 const userRoleSchema = z.object({ role: z.string().min(1) });
@@ -340,6 +369,54 @@ router.put("/settings/appearance", authorize, requireRole("Super Admin", "Admin"
   );
 
   await logAudit(user.tenantId, user.userId, "settings.appearance.update", payload.data);
+  const newRow = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(newRow));
+});
+
+router.get("/settings/notifications", authorize, async (req, res) => {
+  const user = req.user as AuthPayload;
+  const row = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(row));
+});
+
+router.put("/settings/notifications", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = notificationsSettingsSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  await query(
+    `INSERT INTO tenant_settings (tenant_id, general, language_region, appearance, notifications, billing)
+     VALUES ($1, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $2::jsonb, '{}'::jsonb)
+     ON CONFLICT (tenant_id) DO UPDATE
+     SET notifications = $2::jsonb, updated_at = NOW()`,
+    [user.tenantId, JSON.stringify(payload.data)],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.notifications.update", payload.data);
+  const newRow = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(newRow));
+});
+
+router.get("/settings/billing", authorize, async (req, res) => {
+  const user = req.user as AuthPayload;
+  const row = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(row));
+});
+
+router.put("/settings/billing", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = billingSettingsSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  await query(
+    `INSERT INTO tenant_settings (tenant_id, general, language_region, appearance, notifications, billing)
+     VALUES ($1, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, $2::jsonb)
+     ON CONFLICT (tenant_id) DO UPDATE
+     SET billing = $2::jsonb, updated_at = NOW()`,
+    [user.tenantId, JSON.stringify(payload.data)],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.billing.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
   return jsonResponse(res, settingsResponse(newRow));
 });
