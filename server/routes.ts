@@ -119,13 +119,14 @@ async function consumeOrderStock(tenantId: string, orderId: string, lines: Array
     );
 
 await query(
-    `INSERT INTO stock_movements (tenant_id, product_id, type, quantity, quantity_before, quantity_after, reference_type, reference_id, notes)
+      `INSERT INTO stock_movements (tenant_id, product_id, type, quantity, quantity_before, quantity_after, reference_type, reference_id, notes)
        VALUES ($1, $2, 'OUT', $3, $4, $5, 'ORDER', $6, $7)`,
-    [tenantId, productResult.rows[0].id, line.qty, currentStock, nextStock, orderId, `Commande ${line.name}`],
-  );
+      [tenantId, productResult.rows[0].id, line.qty, currentStock, nextStock, orderId, `Commande ${line.name}`],
+    );
 
   }
 }
+
 
 const registerSchema = z.object({
   companyName: z.string().min(3),
@@ -177,6 +178,239 @@ router.get("/tenants", async (_req, res) => {
  const result = await query<any>("SELECT id, name FROM tenants WHERE is_active = TRUE ORDER BY created_at DESC",);
   return jsonResponse(res, { tenants: result.rows });
 });
+
+// Temporary diagnostic route (DO NOT REMOVE)
+router.get("/settings/test", (_req, res) => {
+  res.json({ ok: true });
+});
+
+// ------------------------------
+// Settings (additive)
+// ------------------------------
+
+
+const roleNamesAllowed = ["Super Admin", "Admin", "Manager", "Serveur", "Cuisine", "Caissier"] as const;
+
+const DEFAULT_GENERAL = {
+  companyName: "",
+  logoUrl: "",
+  address: "",
+  phone: "",
+  email: "",
+  website: "",
+};
+
+const DEFAULT_LANGUAGE_REGION = {
+  language: "fr",
+  currency: "EUR",
+  timezone: "Africa/Casablanca",
+  dateFormat: "DD/MM/YYYY",
+  timeFormat: "24h",
+};
+
+const DEFAULT_APPEARANCE = {
+  theme: "light",
+  primaryColor: "#2563eb",
+  logoUrl: "",
+};
+
+const DEFAULT_NOTIFICATIONS = {};
+const DEFAULT_BILLING = {};
+
+type RoleNameAllowed = (typeof roleNamesAllowed)[number];
+
+function normalizeJson<T extends Record<string, any>>(value: unknown): T {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {} as T;
+  return value as T;
+}
+
+async function getTenantSettingsRow(tenantId: string) {
+  const result = await query<{ general: any; language_region: any; appearance: any; notifications: any; billing: any }>(
+    "SELECT general, language_region, appearance, notifications, billing FROM tenant_settings WHERE tenant_id = $1",
+    [tenantId],
+  );
+  return result.rows[0] ?? null;
+}
+
+function mergeDefaults<T extends Record<string, any>>(defaults: T, next: unknown): T {
+  return { ...defaults, ...(normalizeJson<T>(next) ?? {}) };
+}
+
+function settingsResponse(row: any) {
+  return {
+    general: mergeDefaults(DEFAULT_GENERAL, row?.general),
+    languageRegion: mergeDefaults(DEFAULT_LANGUAGE_REGION, row?.language_region),
+    appearance: mergeDefaults(DEFAULT_APPEARANCE, row?.appearance),
+    notifications: mergeDefaults(DEFAULT_NOTIFICATIONS as any, row?.notifications),
+    billing: mergeDefaults(DEFAULT_BILLING as any, row?.billing),
+  };
+}
+
+const generalSettingsSchema = z.object({
+  companyName: z.string().optional().default(""),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  address: z.string().optional().default(""),
+  phone: z.string().optional().default(""),
+  email: z.string().email().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal("")),
+});
+
+const languageRegionSchema = z.object({
+  language: z.string().min(2).optional().default("fr"),
+  currency: z.string().min(3).optional().default("EUR"),
+  timezone: z.string().optional().default("Africa/Casablanca"),
+  dateFormat: z.string().min(3).optional().default("DD/MM/YYYY"),
+  timeFormat: z.string().min(2).optional().default("24h"),
+});
+
+const appearanceSchema = z.object({
+  theme: z.string().min(3).optional().default("light"),
+  primaryColor: z.string().optional().default("#2563eb"),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+});
+
+const userRoleSchema = z.object({ role: z.string().min(1) });
+const userActiveSchema = z.object({ isActive: z.boolean() });
+
+router.get("/settings/general", authorize, async (req, res) => {
+  const user = req.user as AuthPayload;
+  const row = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(row));
+});
+
+router.put("/settings/general", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = generalSettingsSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  const row = await query(
+    `INSERT INTO tenant_settings (tenant_id, general, language_region, appearance, notifications, billing)
+     VALUES ($1, $2::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
+     ON CONFLICT (tenant_id) DO UPDATE
+     SET general = $2::jsonb, updated_at = NOW()`,
+    [user.tenantId, JSON.stringify(payload.data)],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.general.update", payload.data);
+  const newRow = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(newRow));
+});
+
+router.get("/settings/language-region", authorize, async (req, res) => {
+  const user = req.user as AuthPayload;
+  const row = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(row));
+});
+
+router.put("/settings/language-region", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = languageRegionSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  await query(
+    `INSERT INTO tenant_settings (tenant_id, general, language_region, appearance, notifications, billing)
+     VALUES ($1, '{}'::jsonb, $2::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
+     ON CONFLICT (tenant_id) DO UPDATE
+     SET language_region = $2::jsonb, updated_at = NOW()`,
+    [user.tenantId, JSON.stringify(payload.data)],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.languageRegion.update", payload.data);
+  const newRow = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(newRow));
+});
+
+router.get("/settings/appearance", authorize, async (req, res) => {
+  const user = req.user as AuthPayload;
+  const row = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(row));
+});
+
+router.put("/settings/appearance", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = appearanceSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  await query(
+    `INSERT INTO tenant_settings (tenant_id, general, language_region, appearance, notifications, billing)
+     VALUES ($1, '{}'::jsonb, '{}'::jsonb, $2::jsonb, '{}'::jsonb, '{}'::jsonb)
+     ON CONFLICT (tenant_id) DO UPDATE
+     SET appearance = $2::jsonb, updated_at = NOW()`,
+    [user.tenantId, JSON.stringify(payload.data)],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.appearance.update", payload.data);
+  const newRow = await getTenantSettingsRow(user.tenantId);
+  return jsonResponse(res, settingsResponse(newRow));
+});
+
+router.get("/settings/users", authorize, requireRole("Super Admin", "Admin"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const rows = await query(
+    "SELECT id, email, role, first_name, last_name, is_active FROM users WHERE tenant_id = $1 ORDER BY created_at DESC",
+    [user.tenantId],
+  );
+  return jsonResponse(res, {
+    users: rows.rows.map((u: any) => ({
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      firstName: u.first_name ?? "",
+      lastName: u.last_name ?? "",
+      isActive: u.is_active,
+    })),
+  });
+});
+
+router.put(
+  "/settings/users/:id/role",
+  authorize,
+  requireRole("Super Admin", "Admin"),
+  async (req, res) => {
+    const user = req.user as AuthPayload;
+    const payload = userRoleSchema.safeParse(req.body);
+    if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+    const nextRole = payload.data.role as RoleNameAllowed;
+    if (!roleNamesAllowed.includes(nextRole)) {
+      return jsonResponse(res, { error: "Rôle invalide" }, 400);
+    }
+
+    const { id } = req.params;
+    const updated = await query(
+      "UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING id, role",
+      [nextRole, id, user.tenantId],
+    );
+
+    if (updated.rowCount === 0) return jsonResponse(res, { error: "Utilisateur introuvable" }, 404);
+
+    await logAudit(user.tenantId, user.userId, "settings.user.role.update", { userId: id, role: nextRole });
+    return jsonResponse(res, { id, role: nextRole });
+  },
+);
+
+router.put(
+  "/settings/users/:id/active",
+  authorize,
+  requireRole("Super Admin", "Admin"),
+  async (req, res) => {
+    const user = req.user as AuthPayload;
+    const payload = userActiveSchema.safeParse(req.body);
+    if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+    const { id } = req.params;
+    const updated = await query(
+      "UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING id, is_active",
+      [payload.data.isActive, id, user.tenantId],
+    );
+
+    if (updated.rowCount === 0) return jsonResponse(res, { error: "Utilisateur introuvable" }, 404);
+
+    await logAudit(user.tenantId, user.userId, "settings.user.active.update", { userId: id, isActive: payload.data.isActive });
+    return jsonResponse(res, { id, isActive: payload.data.isActive });
+  },
+);
+
 
 router.post("/auth/register", async (req, res) => {
   const parse = registerSchema.safeParse(req.body);
@@ -370,7 +604,7 @@ router.post("/orders", async (req, res) => {
     return jsonResponse(res, { error: "Restaurant requis" }, 400);
   }
 
-  const body = z
+  const parsed = z
     .object({
       service: z.enum(["sur_place", "emporter"]),
       tableLabel: z.string().optional(),
@@ -386,16 +620,17 @@ router.post("/orders", async (req, res) => {
     })
     .safeParse(req.body);
 
-  if (!body.success) {
-    return jsonResponse(res, { error: body.error.flatten() }, 400);
+  if (!parsed.success) {
+    return jsonResponse(res, { error: parsed.error.flatten() }, 400);
   }
 
-  if (body.data.service === "sur_place" && !body.data.tableLabel?.trim()) {
+  const data = parsed.data;
+
+  if (data.service === "sur_place" && !data.tableLabel?.trim()) {
     return jsonResponse(res, { error: "tableLabel requis pour sur place" }, 400);
   }
 
-  // Vérifier le stock disponible pour chaque ligne avant insertion (évite exception côté DB)
-  for (const line of body.data.lines) {
+  for (const line of data.lines) {
     const stockCheck = await query<{ stock_quantity: number }>(
       `SELECT p.stock_quantity FROM menu_items mi JOIN products p ON mi.inventory_product_id = p.id WHERE mi.id = $1 AND mi.tenant_id = $2 LIMIT 1`,
       [line.itemId, tenantId],
@@ -409,22 +644,22 @@ router.post("/orders", async (req, res) => {
     const orderResult = await query<{ id: string }>(
       `INSERT INTO orders (tenant_id, user_id, table_label, status, service, total, payment_status)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [tenantId, req.user?.userId ?? null, body.data.tableLabel?.trim() ?? null, "recue", body.data.service, body.data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0), "pending"],
+      [tenantId, req.user?.userId ?? null, data.tableLabel?.trim() ?? null, "recue", data.service, data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0), "pending"],
     );
 
     const orderId = orderResult.rows[0].id;
-    const rows = body.data.lines.map((line) => [orderId, line.itemId, line.name, line.qty, line.unitPrice, line.note ?? ""] as const);
+    const rows = data.lines.map((line) => [orderId, line.itemId, line.name, line.qty, line.unitPrice, line.note ?? ""] as const);
     const insertLine = `INSERT INTO order_lines (order_id, menu_item_id, name, qty, unit_price, note) VALUES ${rows.map((_, index) => `($${index * 6 + 1}, $${index * 6 + 2}, $${index * 6 + 3}, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`).join(", ")}`;
     await query(insertLine, rows.flat());
 
-    await logAudit(tenantId, req.user?.userId ?? null, "order.create", { orderId, service: body.data.service });
+    await logAudit(tenantId, req.user?.userId ?? null, "order.create", { orderId, service: data.service });
 
     return jsonResponse(res, {
       id: orderId,
       createdAt: Date.now(),
-      service: body.data.service,
-      tableLabel: body.data.tableLabel?.trim() ?? "—",
-      lines: body.data.lines.map((line) => ({
+      service: data.service,
+      tableLabel: data.tableLabel?.trim() ?? "—",
+      lines: data.lines.map((line) => ({
         lineId: createToken(),
         itemId: line.itemId,
         name: line.name,
@@ -432,31 +667,13 @@ router.post("/orders", async (req, res) => {
         qty: line.qty,
         note: line.note ?? "",
       })),
-      subtotal: body.data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0),
+      subtotal: data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0),
       status: "recue",
     }, 201);
   } catch (err: any) {
-    // Attraper les erreurs liées à la BD et renvoyer une réponse propre sans planter le serveur
-    console.error('Order creation error:', err);
-    return jsonResponse(res, { error: 'Échec création commande — veuillez réessayer' }, 500);
+    console.error("Order creation error:", err);
+    return jsonResponse(res, { error: "Échec création commande — veuillez réessayer" }, 500);
   }
-
-  return jsonResponse(res, {
-    id: orderId,
-    createdAt: Date.now(),
-    service: body.data.service,
-    tableLabel: body.data.tableLabel?.trim() ?? "—",
-    lines: body.data.lines.map((line) => ({
-      lineId: createToken(),
-      itemId: line.itemId,
-      name: line.name,
-      unitPrice: line.unitPrice,
-      qty: line.qty,
-      note: line.note ?? "",
-    })),
-    subtotal: body.data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0),
-    status: "recue",
-  }, 201);
 });
 
 router.get("/orders", authorize, async (req, res) => {

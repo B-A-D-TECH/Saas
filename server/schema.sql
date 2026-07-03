@@ -270,6 +270,16 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 
 
+CREATE TABLE IF NOT EXISTS tenant_settings (
+  tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  general JSONB NOT NULL DEFAULT '{}'::jsonb,
+  language_region JSONB NOT NULL DEFAULT '{}'::jsonb,
+  appearance JSONB NOT NULL DEFAULT '{}'::jsonb,
+  notifications JSONB NOT NULL DEFAULT '{}'::jsonb,
+  billing JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 INSERT INTO roles (name) VALUES
   ('Super Admin'),
   ('Admin'),
@@ -278,3 +288,4 @@ INSERT INTO roles (name) VALUES
   ('Cuisine'),
   ('Caissier')
 ON CONFLICT DO NOTHING;
+

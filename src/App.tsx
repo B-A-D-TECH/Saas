@@ -15,9 +15,11 @@ import InventoryPage from "./components/InventoryPage";
 import SuppliersPage from "./components/SuppliersPage";
 import PurchasesPage from "./components/PurchasesPage";
 import StockHistoryPage from "./components/StockHistoryPage";
+import SettingsPage from "./components/SettingsPage";
 
 
 function RequireAuth({ children }: { children: ReactNode }) {
+
   const auth = useAuth();
   const location = useLocation();
   if (!auth.session) {
@@ -45,6 +47,8 @@ export default function App() {
           <Route path="/products/:id/edit" element={<RequireAuth><ProductForm /></RequireAuth>} />
           <Route path="/categories" element={<RequireAuth><Categories /></RequireAuth>} />
           <Route path="/inventory" element={<RequireAuth><InventoryPage /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+
           <Route path="/suppliers" element={<RequireAuth><SuppliersPage /></RequireAuth>} />
           <Route path="/purchases" element={<RequireAuth><PurchasesPage /></RequireAuth>} />
           <Route path="/stock-history" element={<RequireAuth><StockHistoryPage /></RequireAuth>} />

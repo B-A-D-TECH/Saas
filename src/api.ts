@@ -386,5 +386,119 @@ export async function validateQrToken(token: string): Promise<{ restaurantId: st
   if (!data.restaurantId) throw new Error("Réponse serveur invalide");
   return { restaurantId: data.restaurantId, tableId: data.tableId ?? null, tableName: data.tableName ?? null };
 }
+
+export interface SettingsGeneralPayload {
+  companyName?: string;
+  logoUrl?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+}
+
+export interface SettingsLanguageRegionPayload {
+  language?: string;
+  currency?: string;
+  timezone?: string;
+  dateFormat?: string;
+  timeFormat?: string;
+}
+
+export interface SettingsAppearancePayload {
+  theme?: string;
+  primaryColor?: string;
+  logoUrl?: string;
+}
+
+export interface TenantUserRow {
+  id: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  isActive: boolean;
+}
+
+export async function fetchSettingsGeneral(): Promise<SettingsGeneralPayload> {
+  const res = await fetch(`${API_URL}/api/settings/general`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les paramètres");
+  const data = await parseJson<{ general?: SettingsGeneralPayload }>(res);
+  return data.general ?? {};
+}
+
+export async function updateSettingsGeneral(payload: SettingsGeneralPayload): Promise<SettingsGeneralPayload> {
+  const res = await fetch(`${API_URL}/api/settings/general`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
+  const data = await parseJson<{ general?: SettingsGeneralPayload }>(res);
+  return data.general ?? {};
+}
+
+export async function fetchSettingsLanguageRegion(): Promise<SettingsLanguageRegionPayload> {
+  const res = await fetch(`${API_URL}/api/settings/language-region`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les paramètres");
+  const data = await parseJson<{ languageRegion?: SettingsLanguageRegionPayload; language_region?: SettingsLanguageRegionPayload; }>(res);
+  // backend returns languageRegion key
+  return (data as any).languageRegion ?? (data as any).language_region ?? {};
+}
+
+export async function updateSettingsLanguageRegion(payload: SettingsLanguageRegionPayload): Promise<SettingsLanguageRegionPayload> {
+  const res = await fetch(`${API_URL}/api/settings/language-region`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
+  const data = await parseJson<any>(res);
+  return data.languageRegion ?? data.language_region ?? {};
+}
+
+export async function fetchSettingsAppearance(): Promise<SettingsAppearancePayload> {
+  const res = await fetch(`${API_URL}/api/settings/appearance`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les paramètres");
+  const data = await parseJson<{ appearance?: SettingsAppearancePayload }>(res);
+  return data.appearance ?? {};
+}
+
+export async function updateSettingsAppearance(payload: SettingsAppearancePayload): Promise<SettingsAppearancePayload> {
+  const res = await fetch(`${API_URL}/api/settings/appearance`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible d'enregistrer les paramètres");
+  const data = await parseJson<{ appearance?: SettingsAppearancePayload }>(res);
+  return data.appearance ?? {};
+}
+
+export async function fetchTenantUsers(): Promise<TenantUserRow[]> {
+  const res = await fetch(`${API_URL}/api/settings/users`, { headers: createRequestHeaders() });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de charger les utilisateurs");
+  const data = await parseJson<{ users?: TenantUserRow[] }>(res);
+  return Array.isArray(data.users) ? data.users : [];
+}
+
+export async function updateTenantUserRole(userId: string, nextRole: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/settings/users/${encodeURIComponent(userId)}/role`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify({ role: nextRole }),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de mettre à jour le rôle");
+}
+
+export async function updateTenantUserActive(userId: string, isActive: boolean): Promise<void> {
+  const res = await fetch(`${API_URL}/api/settings/users/${encodeURIComponent(userId)}/active`, {
+    method: "PUT",
+    headers: createRequestHeaders(),
+    body: JSON.stringify({ isActive }),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de mettre à jour l'utilisateur");
+}
+
 console.log("API_URL =", API_URL);
+
 console.log("ENV TEST:", import.meta.env.VITE_API_URL);
