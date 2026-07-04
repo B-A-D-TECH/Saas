@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "noEmit": true,
+    "sourceMap": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@server/*": ["server/*"],
+      "@types/*": ["server/types/*"]
+    }
+  },
+  "include": ["server"],
+  "exclude": ["node_modules", "dist", "src", "**/*.d.ts"]
+}
+
+

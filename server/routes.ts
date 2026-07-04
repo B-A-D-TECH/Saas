@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query } from "./pg.ts";
 import { createJwt, hashPassword, verifyJwt, verifyPassword, createToken } from "./auth.ts";
 import type { Request, Response, NextFunction } from "express";
+import type { AuthPayload } from "./middleware/auth.ts";
 import { seedMenuForTenant } from "./pgSeed.ts";
 
 const router = express.Router();
@@ -11,20 +12,6 @@ const roleHierarchy = ["Super Admin", "Admin", "Manager", "Serveur", "Cuisine", 
 
 type Role = (typeof roleHierarchy)[number];
 
-type AuthPayload = {
-  userId: string;
-  tenantId: string;
-  email: string;
-  role: Role;
-};
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthPayload;
-    }
-  }
-}
 
 function jsonResponse(res: Response, data: unknown = null, status = 200) {
   return res.status(status).json(data);
@@ -44,7 +31,7 @@ function authorize(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: "Token manquant" });
   }
   try {
-    const data = verifyJwt(token) as AuthPayload;
+    const data = verifyJwt(token) as unknown as AuthPayload;
     req.user = data;
     next();
   } catch (error) {
@@ -55,7 +42,7 @@ function authorize(req: Request, res: Response, next: NextFunction) {
 function requireRole(...allowed: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as AuthPayload | undefined;
-    if (!user || !allowed.includes(user.role)) {
+    if (!user || !allowed.includes(user.role as Role)) {
       return res.status(403).json({ error: "Rôle insuffisant" });
     }
     next();

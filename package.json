@@ -1,5 +1,6 @@
 {
-  "name": "restaurant-pos-caisse",
+  "name": "restaurant-pos-saas",
+  "description": "Multi-tenant SaaS Restaurant POS and Inventory Management System",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,17 +8,22 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "node ./node_modules/concurrently/dist/bin/concurrently.js -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
-    "dev:web": "node ./node_modules/vite/bin/vite.js",
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "node --watch --import tsx server/index.ts",
-    "build": "node ./node_modules/typescript/lib/tsc.js && node ./node_modules/vite/bin/vite.js build",
-    "preview": "node ./node_modules/vite/bin/vite.js preview",
-    "start:api": "node --import tsx server/index.ts"
+    "dev:web": "vite",
+    "build": "tsc && vite build",
+    "build:server": "tsc --project tsconfig.server.json",
+    "preview": "vite preview",
+    "start": "node --import tsx server/index.ts",
+    "type-check": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
     "argon2": "^0.44.0",
     "chart.js": "^4.5.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "express-rate-limit": "^7.0.0",
     "jsonwebtoken": "^9.0.0",
@@ -46,3 +52,4 @@
     "vite": "^6.0.1"
   }
 }
+
