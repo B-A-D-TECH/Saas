@@ -27,6 +27,20 @@ export type OrderStatus = "recue" | "preparation" | "prete" | "payee";
 
 export type ServiceMode = "sur_place" | "emporter";
 
+export interface QuoteSummary {
+  reference: string;
+  invoiceReference: string;
+  companyName: string;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  paymentTerms: string;
+  footer: string;
+  enabled: boolean;
+  lines: Array<{ name: string; qty: number; unitPrice: number; total: number }>;
+}
+
 export interface Order {
   id: string;
   createdAt: number;
@@ -37,6 +51,7 @@ export interface Order {
   status: OrderStatus;
   paymentStatus: string;
   payments: Payment[];
+  quote?: QuoteSummary | null;
 }
 
 export interface PosState {

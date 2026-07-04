@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthContext";
 import {
+  createTenantUser,
   fetchSettingsAppearance,
   fetchSettingsBilling,
   fetchSettingsGeneral,
@@ -92,6 +93,8 @@ export default function SettingsPage() {
 
   const [users, setUsers] = useState<TenantUserRow[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", password: "", role: "Caissier", isActive: true });
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [usersSaving, setUsersSaving] = useState<Record<string, boolean>>({});
@@ -278,6 +281,20 @@ export default function SettingsPage() {
       setError(e instanceof Error ? e.message : "Impossible de mettre à jour l'utilisateur");
     } finally {
       setUsersSaving((m) => ({ ...m, [userId]: false }));
+    }
+  }
+
+  async function handleCreateUser() {
+    setCreatingUser(true);
+    setError(null);
+    try {
+      const created = await createTenantUser(newUser);
+      setUsers((prev) => [created, ...prev]);
+      setNewUser({ firstName: "", lastName: "", email: "", password: "", role: "Caissier", isActive: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Impossible de créer l'utilisateur");
+    } finally {
+      setCreatingUser(false);
     }
   }
 
@@ -726,7 +743,78 @@ export default function SettingsPage() {
                 {usersLoading ? <div>Chargement...</div> : null}
 
                 {!usersLoading ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+                    <div className="border border-white/10 rounded p-4 bg-surface-800/60">
+                      <div className="text-sm font-semibold mb-3">Ajouter un employé</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label className="block">
+                          <div className="text-sm mb-1">Prénom</div>
+                          <input
+                            className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                            value={newUser.firstName}
+                            onChange={(e) => setNewUser((u) => ({ ...u, firstName: e.target.value }))}
+                            disabled={creatingUser}
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="text-sm mb-1">Nom</div>
+                          <input
+                            className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                            value={newUser.lastName}
+                            onChange={(e) => setNewUser((u) => ({ ...u, lastName: e.target.value }))}
+                            disabled={creatingUser}
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="text-sm mb-1">Email</div>
+                          <input
+                            type="email"
+                            className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                            value={newUser.email}
+                            onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
+                            disabled={creatingUser}
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="text-sm mb-1">Mot de passe</div>
+                          <input
+                            type="password"
+                            className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                            value={newUser.password}
+                            onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))}
+                            disabled={creatingUser}
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="text-sm mb-1">Rôle</div>
+                          <select
+                            className="w-full bg-surface-800 border border-white/10 rounded px-3 py-2"
+                            value={newUser.role}
+                            onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value }))}
+                            disabled={creatingUser}
+                          >
+                            {roleOptions.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-2 pt-6">
+                          <input
+                            type="checkbox"
+                            checked={newUser.isActive}
+                            onChange={(e) => setNewUser((u) => ({ ...u, isActive: e.target.checked }))}
+                            disabled={creatingUser}
+                          />
+                          <span>Actif</span>
+                        </label>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <button type="button" className="btn-primary" onClick={handleCreateUser} disabled={creatingUser}>
+                          {creatingUser ? "Création..." : "Ajouter l'employé"}
+                        </button>
+                      </div>
+                    </div>
+
                     {users.map((u) => (
                       <div key={u.id} className="border border-white/10 rounded p-4">
                         <div className="flex items-center justify-between gap-4">

@@ -26,6 +26,7 @@ export function Caisse() {
     isBootstrapping,
     isSubmitting,
     actionError,
+    lastQuote,
     clearActionError,
     retryBootstrap,
   } = usePosState();
@@ -89,6 +90,13 @@ export function Caisse() {
           <button type="button" className="btn-secondary" onClick={clearActionError}>
             Fermer
           </button>
+        </div>
+      )}
+      {lastQuote && (
+        <div className="app-banner-top" role="status">
+          <span className="app-banner app-banner-info">
+            Devis généré {lastQuote.reference} • {formatMoney(lastQuote.total)}
+          </span>
         </div>
       )}
       <div className="app-shell">

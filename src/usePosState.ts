@@ -1,4 +1,4 @@
-import type { CategoryId, MenuItem, Order, OrderStatus, PosState, ServiceMode } from "./types";
+import type { CategoryId, MenuItem, Order, OrderStatus, PosState, QuoteSummary, ServiceMode } from "./types";
 import { createOrder, fetchMenu, fetchOrders, patchOrderStatus } from "./api";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
@@ -129,6 +129,7 @@ export function usePosState() {
   const [bootKey, setBootKey] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [lastQuote, setLastQuote] = useState<QuoteSummary | null>(null);
 
   function handleUnauthorized(error: unknown): boolean {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -211,6 +212,7 @@ export function usePosState() {
           note: l.note,
         })),
       });
+      setLastQuote(order.quote ?? null);
       dispatch({ type: "CLEAR_CART" });
       dispatch({ type: "PREPEND_ORDER", order });
     } catch (e) {
@@ -254,6 +256,7 @@ export function usePosState() {
     isBootstrapping,
     isSubmitting,
     actionError,
+    lastQuote,
     clearActionError: () => setActionError(null),
     retryBootstrap,
   };

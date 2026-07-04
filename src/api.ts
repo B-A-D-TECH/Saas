@@ -551,6 +551,25 @@ export async function updateTenantUserActive(userId: string, isActive: boolean):
   if (!res.ok) throwIfUnauthorized(res, "Impossible de mettre à jour l'utilisateur");
 }
 
+export async function createTenantUser(payload: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: string;
+  isActive?: boolean;
+}): Promise<TenantUserRow> {
+  const res = await fetch(`${API_URL}/api/settings/users`, {
+    method: "POST",
+    headers: createRequestHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throwIfUnauthorized(res, "Impossible de créer l'utilisateur");
+  const data = await parseJson<{ user?: TenantUserRow; error?: string }>(res);
+  if (!data.user) throw new Error(data.error ?? "Réponse serveur invalide");
+  return data.user;
+}
+
 console.log("API_URL =", API_URL);
 
 console.log("ENV TEST:", import.meta.env.VITE_API_URL);

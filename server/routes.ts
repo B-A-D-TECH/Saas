@@ -5,6 +5,7 @@ import { createJwt, hashPassword, verifyJwt, verifyPassword, createToken } from 
 import type { Request, Response, NextFunction } from "express";
 import type { AuthPayload } from "./middleware/auth.ts";
 import { seedMenuForTenant } from "./pgSeed.ts";
+import { buildQuotePayload } from "./quote.ts";
 
 const router = express.Router();
 
@@ -287,6 +288,14 @@ const billingSettingsSchema = z.object({
 
 const userRoleSchema = z.object({ role: z.string().min(1) });
 const userActiveSchema = z.object({ isActive: z.boolean() });
+const createUserSchema = z.object({
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+  role: z.string().min(1),
+  isActive: z.boolean().optional().default(true),
+});
 
 router.get("/settings/general", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
@@ -424,6 +433,46 @@ router.get("/settings/users", authorize, requireRole("Super Admin", "Admin"), as
       isActive: u.is_active,
     })),
   });
+});
+
+router.post("/settings/users", authorize, requireRole("Super Admin", "Admin"), async (req, res) => {
+  const user = req.user as AuthPayload;
+  const payload = createUserSchema.safeParse(req.body);
+  if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
+
+  const candidateRole = payload.data.role as RoleNameAllowed;
+  if (!roleNamesAllowed.includes(candidateRole)) {
+    return jsonResponse(res, { error: "Rôle invalide" }, 400);
+  }
+
+  const normalizedEmail = payload.data.email.toLowerCase();
+  const existing = await query<{ id: string }>("SELECT id FROM users WHERE tenant_id = $1 AND email = $2", [user.tenantId, normalizedEmail]);
+  if (existing.rowCount && existing.rowCount > 0) {
+    return jsonResponse(res, { error: "Cet email est déjà utilisé" }, 409);
+  }
+
+  const passwordHash = await hashPassword(payload.data.password);
+  const created = await query<{ id: string }>(
+    "INSERT INTO users (tenant_id, email, password_hash, role, first_name, last_name, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+    [user.tenantId, normalizedEmail, passwordHash, candidateRole, payload.data.firstName.trim(), payload.data.lastName.trim(), payload.data.isActive],
+  );
+
+  await logAudit(user.tenantId, user.userId, "settings.user.create", {
+    userId: created.rows[0].id,
+    email: normalizedEmail,
+    role: candidateRole,
+  });
+
+  return jsonResponse(res, {
+    user: {
+      id: created.rows[0].id,
+      email: normalizedEmail,
+      role: candidateRole,
+      firstName: payload.data.firstName.trim(),
+      lastName: payload.data.lastName.trim(),
+      isActive: payload.data.isActive,
+    },
+  }, 201);
 });
 
 router.put(
@@ -694,6 +743,21 @@ router.post("/orders", async (req, res) => {
     return jsonResponse(res, { error: "tableLabel requis pour sur place" }, 400);
   }
 
+  const settingsRow = await getTenantSettingsRow(tenantId);
+  const generalSettings = mergeDefaults(DEFAULT_GENERAL, settingsRow?.general);
+  const billingSettings = mergeDefaults(DEFAULT_BILLING as any, settingsRow?.billing);
+  const quotePayload = buildQuotePayload(
+    {
+      lines: data.lines.map((line) => ({
+        name: line.name,
+        qty: line.qty,
+        unitPrice: line.unitPrice,
+      })),
+    },
+    billingSettings,
+    generalSettings,
+  );
+
   for (const line of data.lines) {
     const stockCheck = await query<{ stock_quantity: number }>(
       `SELECT p.stock_quantity FROM menu_items mi JOIN products p ON mi.inventory_product_id = p.id WHERE mi.id = $1 AND mi.tenant_id = $2 LIMIT 1`,
@@ -733,6 +797,7 @@ router.post("/orders", async (req, res) => {
       })),
       subtotal: data.lines.reduce((total, line) => total + line.unitPrice * line.qty, 0),
       status: "recue",
+      quote: quotePayload,
     }, 201);
   } catch (err: any) {
     console.error("Order creation error:", err);
