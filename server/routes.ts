@@ -300,7 +300,7 @@ const createUserSchema = z.object({
 router.get("/settings/general", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const row = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(row));
+  return jsonResponse(res, { general: mergeDefaults(DEFAULT_GENERAL, row?.general) });
 });
 
 router.put("/settings/general", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
@@ -318,13 +318,13 @@ router.put("/settings/general", authorize, requireRole("Super Admin", "Admin", "
 
   await logAudit(user.tenantId, user.userId, "settings.general.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(newRow));
+  return jsonResponse(res, { general: mergeDefaults(DEFAULT_GENERAL, newRow?.general) });
 });
 
 router.get("/settings/language-region", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const row = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(row));
+  return jsonResponse(res, { languageRegion: mergeDefaults(DEFAULT_LANGUAGE_REGION, row?.language_region) });
 });
 
 router.put("/settings/language-region", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
@@ -342,13 +342,13 @@ router.put("/settings/language-region", authorize, requireRole("Super Admin", "A
 
   await logAudit(user.tenantId, user.userId, "settings.languageRegion.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(newRow));
+  return jsonResponse(res, { languageRegion: mergeDefaults(DEFAULT_LANGUAGE_REGION, newRow?.language_region) });
 });
 
 router.get("/settings/appearance", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const row = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(row));
+  return jsonResponse(res, { appearance: mergeDefaults(DEFAULT_APPEARANCE, row?.appearance) });
 });
 
 router.put("/settings/appearance", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
@@ -366,13 +366,13 @@ router.put("/settings/appearance", authorize, requireRole("Super Admin", "Admin"
 
   await logAudit(user.tenantId, user.userId, "settings.appearance.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(newRow));
+  return jsonResponse(res, { appearance: mergeDefaults(DEFAULT_APPEARANCE, newRow?.appearance) });
 });
 
 router.get("/settings/notifications", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const row = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(row));
+  return jsonResponse(res, { notifications: mergeDefaults(DEFAULT_NOTIFICATIONS as any, row?.notifications) });
 });
 
 router.put("/settings/notifications", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
@@ -390,13 +390,13 @@ router.put("/settings/notifications", authorize, requireRole("Super Admin", "Adm
 
   await logAudit(user.tenantId, user.userId, "settings.notifications.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(newRow));
+  return jsonResponse(res, { notifications: mergeDefaults(DEFAULT_NOTIFICATIONS as any, newRow?.notifications) });
 });
 
 router.get("/settings/billing", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const row = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(row));
+  return jsonResponse(res, { billing: mergeDefaults(DEFAULT_BILLING as any, row?.billing) });
 });
 
 router.put("/settings/billing", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
@@ -414,7 +414,7 @@ router.put("/settings/billing", authorize, requireRole("Super Admin", "Admin", "
 
   await logAudit(user.tenantId, user.userId, "settings.billing.update", payload.data);
   const newRow = await getTenantSettingsRow(user.tenantId);
-  return jsonResponse(res, settingsResponse(newRow));
+  return jsonResponse(res, { billing: mergeDefaults(DEFAULT_BILLING as any, newRow?.billing) });
 });
 
 router.get("/settings/users", authorize, requireRole("Super Admin", "Admin"), async (req, res) => {

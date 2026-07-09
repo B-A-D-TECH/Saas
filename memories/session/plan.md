@@ -1,0 +1,3 @@
+- Inspect frontend API calls for settings, suppliers, purchases, and stock movements
+- Compare against backend routes and authentication/tenant handling
+- Fix any mismatch and verify by building/running the relevant checks
