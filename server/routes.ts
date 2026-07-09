@@ -13,6 +13,21 @@ const roleHierarchy = ["Super Admin", "Admin", "Manager", "Serveur", "Cuisine", 
 
 type Role = (typeof roleHierarchy)[number];
 
+function normalizeRole(role: unknown): Role {
+  const raw = String(role ?? "").trim().toLowerCase();
+  const aliases: Record<string, Role> = {
+    "super admin": "Super Admin",
+    "superadmin": "Super Admin",
+    admin: "Admin",
+    manager: "Manager",
+    serveur: "Serveur",
+    cuisine: "Cuisine",
+    caissier: "Caissier",
+  };
+
+  return aliases[raw] ?? (roleHierarchy.find((candidate) => candidate.toLowerCase() === raw) ?? "Caissier");
+}
+
 
 function jsonResponse(res: Response, data: unknown = null, status = 200) {
   return res.status(status).json(data);
@@ -43,7 +58,8 @@ function authorize(req: Request, res: Response, next: NextFunction) {
 function requireRole(...allowed: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as AuthPayload | undefined;
-    if (!user || !allowed.includes(user.role as Role)) {
+    const normalizedRole = normalizeRole(user?.role);
+    if (!user || !allowed.includes(normalizedRole)) {
       return res.status(403).json({ error: "Rôle insuffisant" });
     }
     next();

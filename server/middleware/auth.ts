@@ -30,6 +30,21 @@ const roleHierarchy: Record<Role, number> = {
   Caissier: 6,
 };
 
+function normalizeRole(role: unknown): Role {
+  const raw = String(role ?? "").trim().toLowerCase();
+  const aliases: Record<string, Role> = {
+    "super admin": "Super Admin",
+    "superadmin": "Super Admin",
+    admin: "Admin",
+    manager: "Manager",
+    serveur: "Serveur",
+    cuisine: "Cuisine",
+    caissier: "Caissier",
+  };
+
+  return aliases[raw] ?? (Object.keys(roleHierarchy).find((candidate) => candidate.toLowerCase() === raw) as Role | undefined) ?? "Caissier";
+}
+
 /**
  * Authentication middleware - verifies JWT token
  */
@@ -70,7 +85,7 @@ export function authorize(...allowedRoles: Role[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user as AuthPayload | undefined;
 
-    if (!user || !allowedRoles.includes(user.role as Role)) {
+    if (!user || !allowedRoles.includes(normalizeRole(user.role))) {
       const error = new ForbiddenError("Insufficient permissions");
       res.status(403).json(error.toJSON());
       return;
