@@ -14,7 +14,7 @@ const roleHierarchy = ["Super Admin", "Admin", "Manager", "Serveur", "Cuisine", 
 type Role = (typeof roleHierarchy)[number];
 
 function normalizeRole(role: unknown): Role {
-  const raw = String(role ?? "").trim().toLowerCase();
+  const raw = String(role ?? "").trim().toLowerCase().replace(/[_\-\s]+/g, " ");
   const aliases: Record<string, Role> = {
     "super admin": "Super Admin",
     "superadmin": "Super Admin",
@@ -25,7 +25,15 @@ function normalizeRole(role: unknown): Role {
     caissier: "Caissier",
   };
 
-  return aliases[raw] ?? (roleHierarchy.find((candidate) => candidate.toLowerCase() === raw) ?? "Caissier");
+  if (aliases[raw]) return aliases[raw];
+  if (raw.includes("super") && raw.includes("admin")) return "Super Admin";
+  if (raw.includes("admin")) return "Admin";
+  if (raw.includes("manager")) return "Manager";
+  if (raw.includes("serveur")) return "Serveur";
+  if (raw.includes("cuisine")) return "Cuisine";
+  if (raw.includes("caiss")) return "Caissier";
+
+  return roleHierarchy.find((candidate) => candidate.toLowerCase() === raw) ?? "Caissier";
 }
 
 
