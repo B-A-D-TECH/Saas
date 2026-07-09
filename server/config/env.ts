@@ -35,18 +35,11 @@ export const env = {
   DEBUG: process.env.DEBUG === "true",
 } as const;
 
-const REQUIRED_VARS = ["PG_DATABASE"];
-
 export function validateEnv(): void {
-  const missing: string[] = [];
+  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+  const hasPgDatabase = Boolean(process.env.PG_DATABASE);
 
-  for (const key of REQUIRED_VARS) {
-    if (!process.env[key]) {
-      missing.push(key);
-    }
-  }
-
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  if (!hasDatabaseUrl && !hasPgDatabase) {
+    throw new Error("Missing required environment variables: DATABASE_URL or PG_DATABASE");
   }
 }
