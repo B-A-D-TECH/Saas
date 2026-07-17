@@ -118,9 +118,9 @@ export function Caisse() {
       )}
       {checkoutOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal" aria-label="Encaissement">
+          <div className="modal" aria-label="Facture électronique">
             <div className="modal-header">
-              <h3>Encaisser</h3>
+              <h3>Facture électronique</h3>
               <button type="button" className="btn-secondary" onClick={() => setCheckoutOpen(false)}>
                 Fermer
               </button>
@@ -128,6 +128,38 @@ export function Caisse() {
 
             <div className="modal-content">
               <div className="encaisse-summary">
+                <div className="summary-row">
+                  <span>Référence</span>
+                  <span>{lastQuote?.reference ?? "À générer"}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Entreprise</span>
+                  <span>{lastQuote?.companyName ?? "Restaurant POS"}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Client</span>
+                  <span>{state.service === "sur_place" ? `Table ${state.tableLabel || "—"}` : "À emporter"}</span>
+                </div>
+              </div>
+
+              <div className="cart-content" style={{ marginTop: "1rem" }}>
+                <div className="cart-lines">
+                  {state.cart.map((line) => (
+                    <div key={line.lineId} className="cart-line">
+                      <div className="cart-line-top">
+                        <span className="cart-line-name">{line.name}</span>
+                        <span className="qty-val">{line.qty} × {formatMoney(line.unitPrice)}</span>
+                      </div>
+                      <div className="summary-row">
+                        <span>Total ligne</span>
+                        <span>{formatMoney(line.unitPrice * line.qty)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="encaisse-summary" style={{ marginTop: "1rem" }}>
                 <div className="summary-row">
                   <span>Sous-total</span>
                   <span>{formatMoney(cartTotal)}</span>
