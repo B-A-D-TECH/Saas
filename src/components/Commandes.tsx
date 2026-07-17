@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useState, type DragEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePosState } from "../usePosState";
 import type { OrderStatus } from "../types";
 
@@ -34,6 +35,7 @@ function formatMoney(n: number): string {
 }
 
 export function Commandes() {
+  const navigate = useNavigate();
   const {
     state,
     updateOrderStatus,
@@ -124,86 +126,20 @@ export function Commandes() {
               {STATUS_LABELS[status]}
             </button>
           ))}
-          {order.status === "recue" && (
-            <button
-              type="button"
-              className="status-action"
-              onClick={() => setEncaisserFor({ orderId: order.id, total: order.subtotal })}
-            >
-              Encaisser
-            </button>
-          )}
           {order.status !== "recue" && (
             <button type="button" className="status-action" onClick={() => moveToNext(order.id, order.status)}>
               {order.status === "preparation" ? "Marquer prête" : "Terminer"}
+            </button>
+          )}
+          {order.status !== "payee" && (
+            <button type="button" className="status-action" onClick={() => navigate("/Caisse?checkout=1")}>
+              Encaisser
             </button>
           )}
         </div>
       </article>
     );
   };
-
-  const [encaisserFor, setEncaisserFor] = useState<null | { orderId: string; total: number }>(null);
-  const [encaisserMode, setEncaisserMode] = useState<"total" | "equal" | "items">("total");
-  const [equalPeople, setEqualPeople] = useState<number>(2);
-  const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set());
-  const [encaisserError, setEncaisserError] = useState<string | null>(null);
-
-  const encaisserOrder = useMemo(() => {
-    if (!encaisserFor) return null;
-    return state.orders.find((o) => o.id === encaisserFor.orderId) ?? null;
-  }, [encaisserFor, state.orders]);
-
-  function closeEncaisser() {
-    setEncaisserFor(null);
-    setEncaisserMode("total");
-    setEqualPeople(2);
-    setSelectedLineIds(new Set());
-    setEncaisserError(null);
-  }
-
-  async function confirmPayment() {
-    if (!encaisserFor) return;
-    setEncaisserError(null);
-
-    try {
-      if (encaisserMode === "equal") {
-        const n = Math.floor(equalPeople);
-        if (!Number.isFinite(n) || n < 2) {
-          setEncaisserError("Nombre de personnes invalide");
-          return;
-        }
-      }
-
-      if (encaisserMode === "items") {
-        if (selectedLineIds.size === 0) {
-          setEncaisserError("Sélectionnez au moins un article");
-          return;
-        }
-      }
-
-      await updateOrderStatus(encaisserFor.orderId, "payee");
-      closeEncaisser();
-    } catch (e) {
-      setEncaisserError(e instanceof Error ? e.message : "Encaissement impossible");
-    }
-  }
-
-  const equalAmount = useMemo(() => {
-    if (!encaisserFor) return 0;
-    const n = Math.max(2, Math.floor(equalPeople));
-    return encaisserFor.total / n;
-  }, [encaisserFor, equalPeople]);
-
-  const itemsSubtotal = useMemo(() => {
-    const order = encaisserOrder;
-    if (!order) return 0;
-    if (selectedLineIds.size === 0) return 0;
-    return order.lines.reduce((sum, l) => {
-      if (!selectedLineIds.has(l.lineId)) return sum;
-      return sum + l.unitPrice * l.qty;
-    }, 0);
-  }, [encaisserOrder, selectedLineIds]);
 
 
   if (isBootstrapping) {
@@ -240,127 +176,6 @@ export function Commandes() {
           <button className={`btn-secondary${view === "list" ? " active" : ""}`} onClick={() => setView("list")}>Liste</button>
         </div>
       </header>
-
-      {encaisserFor && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <div className="modal" aria-label="Encaissement">
-            <div className="modal-header">
-              <h3>Encaisser</h3>
-              <button type="button" className="btn-secondary" onClick={closeEncaisser}>
-                Fermer
-              </button>
-            </div>
-
-            <div className="modal-content">
-              <div className="encaisse-summary">
-                <div className="total-row">
-                  <span>Total</span>
-                  <strong>{formatMoney(encaisserFor.total)}</strong>
-                </div>
-              </div>
-
-              {encaisserError && (
-                <div className="app-banner app-banner-error" role="alert">
-                  {encaisserError}
-                </div>
-              )}
-
-              <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.75rem" }}>
-                <button
-                  type="button"
-                  className={`btn-primary${encaisserMode === "total" ? " active" : ""}`}
-                  onClick={() => setEncaisserMode("total")}
-                >
-                  Payer la totalité
-                </button>
-
-                <div style={{ border: "1px solid rgba(0,0,0,0.1)", padding: "0.75rem", borderRadius: "10px" }}>
-                  <label style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "center" }}>
-                    <span style={{ fontWeight: 600 }}>Diviser à parts égales</span>
-                    <button
-                      type="button"
-                      className={`btn-secondary${encaisserMode === "equal" ? " active" : ""}`}
-                      onClick={() => setEncaisserMode("equal")}
-                    >
-                      Diviser
-                    </button>
-                  </label>
-
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                    <input
-                      className="field-input"
-                      inputMode="numeric"
-                      type="number"
-                      min={2}
-                      step={1}
-                      value={equalPeople}
-                      onChange={(e) => setEqualPeople(Number(e.target.value))}
-                    />
-                    <button type="button" className="btn-secondary" onClick={() => setEncaisserMode("equal")}>OK</button>
-                  </div>
-
-                  <p className="tagline" style={{ marginTop: "0.5rem" }}>
-                    {formatMoney(equalAmount)} par personne
-                  </p>
-                </div>
-
-                <div style={{ border: "1px solid rgba(0,0,0,0.1)", padding: "0.75rem", borderRadius: "10px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem" }}>
-                    <span style={{ fontWeight: 600 }}>Diviser par article</span>
-                    <button
-                      type="button"
-                      className={`btn-secondary${encaisserMode === "items" ? " active" : ""}`}
-                      onClick={() => setEncaisserMode("items")}
-                    >
-                      Choisir
-                    </button>
-                  </div>
-
-                  <div className="encaisse-items" style={{ display: "grid", gap: "0.35rem", marginTop: "0.5rem" }}>
-                    {encaisserOrder?.lines.map((l) => {
-                      const checked = selectedLineIds.has(l.lineId);
-                      return (
-                        <label key={l.lineId} style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem" }}>
-                          <span>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => {
-                                setSelectedLineIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(l.lineId)) next.delete(l.lineId);
-                                  else next.add(l.lineId);
-                                  return next;
-                                });
-                              }}
-                            />{" "}
-                            {l.qty}× {l.name}
-                          </span>
-                          <span style={{ whiteSpace: "nowrap" }}>{formatMoney(l.unitPrice * l.qty)}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <p className="tagline" style={{ marginTop: "0.5rem" }}>
-                    Sous-total sélectionné : {formatMoney(itemsSubtotal)}
-                  </p>
-                </div>
-
-                <div className="cart-empty-footer" style={{ marginTop: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => void confirmPayment()}
-                  >
-                    Valider l’encaissement
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {state.orders.length === 0 ? (
         <p className="cart-empty">Aucune commande enregistrée pour le moment.</p>

@@ -196,8 +196,8 @@ export function usePosState() {
   const submitDisabled =
     state.cart.length === 0 || (state.service === "sur_place" && !state.tableLabel.trim());
 
-  const submitOrder = useCallback(async () => {
-    if (submitDisabled || isSubmitting) return;
+  const submitOrder = useCallback(async (): Promise<Order | null> => {
+    if (submitDisabled || isSubmitting) return null;
     setActionError(null);
     setIsSubmitting(true);
     try {
@@ -215,10 +215,12 @@ export function usePosState() {
       setLastQuote(order.quote ?? null);
       dispatch({ type: "CLEAR_CART" });
       dispatch({ type: "PREPEND_ORDER", order });
+      return order;
     } catch (e) {
       if (!handleUnauthorized(e)) {
         setActionError(e instanceof Error ? e.message : "Envoi impossible");
       }
+      return null;
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +244,13 @@ export function usePosState() {
     }
   }, []);
 
+  const checkoutOrder = useCallback(async (): Promise<Order | null> => {
+    const order = await submitOrder();
+    if (!order) return null;
+    await updateOrderStatus(order.id, "payee");
+    return order;
+  }, [submitOrder, updateOrderStatus]);
+
   return {
     state,
     dispatch,
@@ -251,6 +260,7 @@ export function usePosState() {
     addItem,
     submitDisabled,
     submitOrder,
+    checkoutOrder,
     updateOrderStatus,
     bootstrapError,
     isBootstrapping,

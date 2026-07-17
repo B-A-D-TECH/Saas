@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePosState } from "../usePosState";
 import { useAuth } from "../AuthContext";
 import type { CategoryId } from "../types";
@@ -22,6 +22,7 @@ export function Caisse() {
     categoryLabels,
     addItem,
     submitOrder,
+    checkoutOrder,
     bootstrapError,
     isBootstrapping,
     isSubmitting,
@@ -32,6 +33,16 @@ export function Caisse() {
   } = usePosState();
 
   const [copied, setCopied] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "1") {
+      setCheckoutOpen(true);
+      window.history.replaceState({}, "", "/Caisse");
+    }
+  }, []);
+
   const categories = Object.keys(categoryLabels) as CategoryId[];
   const items = menuByCategory.get(state.activeCategory) ?? [];
   const hasCartItems = state.cart.length > 0;
@@ -58,6 +69,12 @@ export function Caisse() {
     } catch {
       setCopied(true);
     }
+  };
+
+  const confirmCheckout = async () => {
+    if (checkoutDisabled) return;
+    const order = await checkoutOrder();
+    if (order) setCheckoutOpen(false);
   };
 
   if (isBootstrapping) {
@@ -99,6 +116,41 @@ export function Caisse() {
           </span>
         </div>
       )}
+      {checkoutOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal" aria-label="Encaissement">
+            <div className="modal-header">
+              <h3>Encaisser</h3>
+              <button type="button" className="btn-secondary" onClick={() => setCheckoutOpen(false)}>
+                Fermer
+              </button>
+            </div>
+
+            <div className="modal-content">
+              <div className="encaisse-summary">
+                <div className="total-row">
+                  <span>Total</span>
+                  <strong>{formatMoney(totalAmount)}</strong>
+                </div>
+              </div>
+
+              <p className="tagline" style={{ marginTop: "0.75rem" }}>
+                Confirmez la prise en charge du paiement pour cette commande.
+              </p>
+
+              <div className="cart-empty-footer" style={{ marginTop: "1rem" }}>
+                <button type="button" className="btn-secondary" onClick={() => setCheckoutOpen(false)}>
+                  Annuler
+                </button>
+                <button type="button" className="btn-primary" onClick={() => void confirmCheckout()}>
+                  {isSubmitting ? "Traitement…" : "Valider l’encaissement"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="app-shell">
         <section className="panel">
           <header className="panel-header">
@@ -257,7 +309,7 @@ export function Caisse() {
               type="button"
               className="btn-primary"
               disabled={checkoutDisabled}
-              onClick={() => void submitOrder()}
+              onClick={() => setCheckoutOpen(true)}
               title={invalidTable ? "Indiquez la table pour passer au paiement" : undefined}
             >
               {isSubmitting ? "Traitement…" : "Encaisser"}
