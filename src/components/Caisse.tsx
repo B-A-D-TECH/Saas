@@ -128,22 +128,30 @@ export function Caisse() {
 
             <div className="modal-content">
               <div className="encaisse-summary">
+                <div className="summary-row">
+                  <span>Sous-total</span>
+                  <span>{formatMoney(cartTotal)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>TVA ({Math.round(TAX_RATE * 100)}%)</span>
+                  <span>{formatMoney(taxAmount)}</span>
+                </div>
                 <div className="total-row">
-                  <span>Total</span>
+                  <span>Total à payer</span>
                   <strong>{formatMoney(totalAmount)}</strong>
                 </div>
               </div>
 
               <p className="tagline" style={{ marginTop: "0.75rem" }}>
-                Confirmez la prise en charge du paiement pour cette commande.
+                Confirmer le paiement de cette commande ?
               </p>
 
               <div className="cart-empty-footer" style={{ marginTop: "1rem" }}>
                 <button type="button" className="btn-secondary" onClick={() => setCheckoutOpen(false)}>
-                  Annuler
+                  Fermer
                 </button>
                 <button type="button" className="btn-primary" onClick={() => void confirmCheckout()}>
-                  {isSubmitting ? "Traitement…" : "Valider l’encaissement"}
+                  {isSubmitting ? "Traitement…" : "Confirmer"}
                 </button>
               </div>
             </div>
