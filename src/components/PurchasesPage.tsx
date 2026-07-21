@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPurchases, createPurchase, fetchSuppliers, fetchInventory, createInventory } from "../api";
+import { downloadInvoice, toInvoiceDataUrl } from "../utils/invoice";
 
 export default function PurchasesPage() {
   const [purchases, setPurchases] = useState<any[]>([]);
@@ -13,6 +14,7 @@ export default function PurchasesPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitCost, setUnitCost] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -40,11 +42,20 @@ export default function PurchasesPage() {
     if (unitCost < 0) return setError("Coût unitaire invalide");
     setBusy(true);
     try {
-      await createPurchase({ supplierId: supplierId ?? undefined, productId: finalProductId!, quantity, unitCost, notes: notes || undefined });
+      let invoiceData: string | null = null;
+      let invoiceFileName: string | null = null;
+      let invoiceMimeType: string | null = null;
+      if (invoiceFile) {
+        invoiceData = await toInvoiceDataUrl(invoiceFile);
+        invoiceFileName = invoiceFile.name;
+        invoiceMimeType = invoiceFile.type || "application/octet-stream";
+      }
+      await createPurchase({ supplierId: supplierId ?? undefined, productId: finalProductId!, quantity, unitCost, notes: notes || undefined, invoiceFileName, invoiceMimeType, invoiceData });
       const list = await fetchPurchases();
       setPurchases(list);
       setProductId(null); setSupplierId(null); setQuantity(1); setUnitCost(0); setNotes("");
       setNewProductName("");
+      setInvoiceFile(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Impossible d'ajouter l'achat");
     } finally {
@@ -111,6 +122,11 @@ export default function PurchasesPage() {
                   <label className="field-label">Notes</label>
                   <input className="field-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </div>
+
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label className="field-label">Facture (PDF / image)</label>
+                  <input className="field-input" type="file" accept=".pdf,image/*" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} />
+                </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem", gap: "0.5rem" }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowAdd(false)} disabled={busy}>Annuler</button>
@@ -122,7 +138,7 @@ export default function PurchasesPage() {
       ) : null}
 
       <table className="panel" style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr style={{ textAlign: "left", color: "#cfd8e3" }}><th>Produit</th><th>Fournisseur</th><th>Quantité</th><th>Coût unitaire</th><th>Total</th><th>Date</th></tr></thead>
+        <thead><tr style={{ textAlign: "left", color: "#cfd8e3" }}><th>Produit</th><th>Fournisseur</th><th>Quantité</th><th>Coût unitaire</th><th>Total</th><th>Date</th><th>Facture</th></tr></thead>
         <tbody>
           {purchases.map((purchase) => (
             <tr key={purchase.id} style={{ borderTop: "1px solid #2b3747" }}>
@@ -132,6 +148,11 @@ export default function PurchasesPage() {
               <td>{Number(purchase.unit_cost).toFixed(2)} €</td>
               <td>{Number(purchase.total_cost).toFixed(2)} €</td>
               <td>{new Date(purchase.purchased_at).toLocaleString()}</td>
+              <td>
+                {purchase.invoice_data ? (
+                  <button type="button" className="btn-secondary" onClick={() => downloadInvoice(purchase.invoice_data, purchase.invoice_file_name || "facture")}>Télécharger</button>
+                ) : "—"}
+              </td>
             </tr>
           ))}
         </tbody>

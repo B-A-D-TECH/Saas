@@ -107,8 +107,9 @@ CREATE TABLE IF NOT EXISTS purchases (
   unit_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
   total_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
   purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  notes TEXT,  invoice_file_name TEXT,
+  invoice_mime_type TEXT,
+  invoice_data TEXT,  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS stock_movements (

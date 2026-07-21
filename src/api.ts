@@ -75,6 +75,9 @@ export interface PurchaseRecord {
   notes: string | null;
   supplier_name: string | null;
   product_name: string | null;
+  invoice_file_name: string | null;
+  invoice_mime_type: string | null;
+  invoice_data: string | null;
 }
 
 export interface StockMovementRecord {
@@ -300,7 +303,7 @@ export async function fetchPurchases(): Promise<PurchaseRecord[]> {
   return Array.isArray(data.purchases) ? data.purchases : [];
 }
 
-export async function createPurchase(payload: { supplierId?: string; productId: string; quantity: number; unitCost: number; notes?: string; purchasedAt?: string }): Promise<{ id: string }> {
+export async function createPurchase(payload: { supplierId?: string; productId: string; quantity: number; unitCost: number; notes?: string; purchasedAt?: string; invoiceFileName?: string | null; invoiceMimeType?: string | null; invoiceData?: string | null }): Promise<{ id: string }> {
   const res = await fetch(`${API_URL}/api/purchases`, {
     method: "POST",
     headers: createRequestHeaders(),

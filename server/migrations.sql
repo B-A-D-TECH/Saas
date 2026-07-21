@@ -37,8 +37,15 @@ CREATE TABLE IF NOT EXISTS purchases (
   total_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
   purchased_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   notes TEXT,
+  invoice_file_name TEXT,
+  invoice_mime_type TEXT,
+  invoice_data TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS invoice_file_name TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS invoice_mime_type TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS invoice_data TEXT;
 
 CREATE TABLE IF NOT EXISTS stock_movements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1090,7 +1090,7 @@ router.post("/suppliers", authorize, requireRole("Super Admin", "Admin", "Manage
 router.get("/purchases", authorize, async (req, res) => {
   const user = req.user as AuthPayload;
   const rows = await query(
-    `SELECT p.id, p.quantity, p.unit_cost, p.total_cost, p.purchased_at, p.notes,
+    `SELECT p.id, p.quantity, p.unit_cost, p.total_cost, p.purchased_at, p.notes, p.invoice_file_name, p.invoice_mime_type, p.invoice_data,
             s.name AS supplier_name,
             pr.name AS product_name
      FROM purchases p
@@ -1105,13 +1105,13 @@ router.get("/purchases", authorize, async (req, res) => {
 
 router.post("/purchases", authorize, requireRole("Super Admin", "Admin", "Manager"), async (req, res) => {
   const user = req.user as AuthPayload;
-  const payload = z.object({ supplierId: z.string().uuid().optional(), productId: z.string().uuid(), quantity: z.number().int().positive(), unitCost: z.number().nonnegative(), notes: z.string().optional(), purchasedAt: z.string().optional() }).safeParse(req.body);
+  const payload = z.object({ supplierId: z.string().uuid().optional(), productId: z.string().uuid(), quantity: z.number().int().positive(), unitCost: z.number().nonnegative(), notes: z.string().optional(), purchasedAt: z.string().optional(), invoiceFileName: z.string().optional().nullable(), invoiceMimeType: z.string().optional().nullable(), invoiceData: z.string().optional().nullable() }).safeParse(req.body);
   if (!payload.success) return jsonResponse(res, { error: payload.error.flatten() }, 400);
   const totalCost = payload.data.quantity * payload.data.unitCost;
   const result = await query<{ id: string }>(
-    `INSERT INTO purchases (tenant_id, supplier_id, product_id, quantity, unit_cost, total_cost, notes, purchased_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::timestamptz, NOW())) RETURNING id`,
-    [user.tenantId, payload.data.supplierId ?? null, payload.data.productId, payload.data.quantity, payload.data.unitCost, totalCost, payload.data.notes ?? null, payload.data.purchasedAt ?? null],
+    `INSERT INTO purchases (tenant_id, supplier_id, product_id, quantity, unit_cost, total_cost, notes, purchased_at, invoice_file_name, invoice_mime_type, invoice_data)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::timestamptz, NOW()), $9, $10, $11) RETURNING id`,
+    [user.tenantId, payload.data.supplierId ?? null, payload.data.productId, payload.data.quantity, payload.data.unitCost, totalCost, payload.data.notes ?? null, payload.data.purchasedAt ?? null, payload.data.invoiceFileName ?? null, payload.data.invoiceMimeType ?? null, payload.data.invoiceData ?? null],
   );
   const current = await query<{ stock_quantity: number }>("SELECT stock_quantity FROM products WHERE id = $1 AND tenant_id = $2", [payload.data.productId, user.tenantId]);
   const before = Number(current.rows[0]?.stock_quantity ?? 0);

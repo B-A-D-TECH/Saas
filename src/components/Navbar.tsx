@@ -26,7 +26,7 @@ export default function Navbar() {
           </li>
           <li>
             <NavLink to="/inventory" className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}>
-              Stocks
+              recette disponible
             </NavLink>
           </li>
           <li>
@@ -46,7 +46,7 @@ export default function Navbar() {
           </li>
           <li>
             <NavLink to="/products" className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}>
-              Produits
+              Plats
             </NavLink>
           </li>
           <li>
