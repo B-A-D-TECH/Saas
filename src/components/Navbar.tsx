@@ -26,7 +26,7 @@ export default function Navbar() {
           </li>
           <li>
             <NavLink to="/inventory" className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}>
-              recette disponible
+              Produits primaires
             </NavLink>
           </li>
           <li>

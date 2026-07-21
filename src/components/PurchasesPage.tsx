@@ -124,8 +124,9 @@ export default function PurchasesPage() {
                 </div>
 
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label className="field-label">Facture (PDF / image)</label>
+                  <label className="field-label">Facture fournisseur (PDF / image)</label>
                   <input className="field-input" type="file" accept=".pdf,image/*" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} />
+                  <div style={{ fontSize: "0.9rem", color: "#9aa7b6", marginTop: "0.25rem" }}>La facture sera associée à l’achat et pourra être téléchargée depuis la liste.</div>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem", gap: "0.5rem" }}>
@@ -138,7 +139,7 @@ export default function PurchasesPage() {
       ) : null}
 
       <table className="panel" style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr style={{ textAlign: "left", color: "#cfd8e3" }}><th>Produit</th><th>Fournisseur</th><th>Quantité</th><th>Coût unitaire</th><th>Total</th><th>Date</th><th>Facture</th></tr></thead>
+        <thead><tr style={{ textAlign: "left", color: "#cfd8e3" }}><th>Produit primaire</th><th>Fournisseur</th><th>Quantité</th><th>Coût unitaire</th><th>Total</th><th>Date</th><th>Facture</th></tr></thead>
         <tbody>
           {purchases.map((purchase) => (
             <tr key={purchase.id} style={{ borderTop: "1px solid #2b3747" }}>
